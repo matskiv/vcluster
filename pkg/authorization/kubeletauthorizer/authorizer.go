@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -31,6 +32,7 @@ type kubeletAuthorizer struct {
 
 func (l *kubeletAuthorizer) Authorize(ctx context.Context, a authorizer.Attributes) (authorized authorizer.Decision, reason string, err error) { // get node name
 	nodeName, ok := filters.NodeNameFrom(ctx)
+	klog.Infof("Checking %s users authorization for %s. Nodename: %s", a.GetUser().GetName(), a.GetPath(), nodeName) //dev debug
 	if !ok {
 		return authorizer.DecisionNoOpinion, "", nil
 	} else if a.IsResourceRequest() {
@@ -79,10 +81,12 @@ func (l *kubeletAuthorizer) Authorize(ctx context.Context, a authorizer.Attribut
 
 	err = client.Create(ctx, accessReview)
 	if err != nil {
+		klog.Errorf("error creating access review: %v", err) //dev debug
 		return authorizer.DecisionDeny, "", err
 	} else if accessReview.Status.Allowed && !accessReview.Status.Denied {
 		return authorizer.DecisionAllow, "", nil
 	}
 
+	klog.Info("return authorizer.DecisionDeny, accessReview.Status.Reason, nil") //dev debug
 	return authorizer.DecisionDeny, accessReview.Status.Reason, nil
 }
